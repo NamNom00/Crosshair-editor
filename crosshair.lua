@@ -1,357 +1,307 @@
--- Dead Rails Crosshair Changer
--- Created for Dead Rails game only
-
+-- Services
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Crosshair IDs
-local crosshairs = {
-    {name = "Crosshair 1", id = "358650041"},
-    {name = "Crosshair 2", id = "17459159283"},
-    {name = "Crosshair 3", id = "95285133056919"}
+-- Constants
+local CROSSHAIR_URLS = {
+    "rbxassetid://5681283757", -- Regular crosshair
+    "rbxassetid://95285133056919", -- Red crosshair
+    "rbxassetid://17459159283", -- Test crosshair
+    "rbxassetid://358650041" -- Blue crosshair
 }
 
--- GUI Elements
-local ScreenGui = Instance.new("ScreenGui")
+local CROSSHAIR_NAMES = {
+    "Default",
+    "Red",
+    "Test",
+    "Blue"
+}
+
+-- Create UI
+local TextureChangerUI = Instance.new("ScreenGui")
+TextureChangerUI.Name = "CrosshairTextureChanger"
+TextureChangerUI.ResetOnSpawn = false
+TextureChangerUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+TextureChangerUI.Parent = PlayerGui
+
+-- Main Frame
 local MainFrame = Instance.new("Frame")
-local TitleBar = Instance.new("Frame")
-local TitleText = Instance.new("TextLabel")
-local CloseButton = Instance.new("TextButton")
-local ContentFrame = Instance.new("Frame")
-local CrosshairList = Instance.new("ScrollingFrame")
-local UIListLayout = Instance.new("UIListLayout")
-local DefaultButton = Instance.new("TextButton")
-
--- Variables
-local isDragging = false
-local dragStart = nil
-local startPos = nil
-local currentCrosshair = nil
-local originalCrosshair = nil
-local originalCrosshairParent = nil
-local customCrosshair = nil
-
--- Core UI Setup
-ScreenGui.Name = "CrosshairChangerGui"
-ScreenGui.Parent = game:GetService("CoreGui")
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.DisplayOrder = 999
-
 MainFrame.Name = "MainFrame"
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.Size = UDim2.new(0, 300, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
+MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -125)
-MainFrame.Size = UDim2.new(0, 300, 0, 250)
-MainFrame.ClipsDescendants = true
-MainFrame.Active = true
+MainFrame.Parent = TextureChangerUI
 
+-- Round corners
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- Title Bar
+local TitleBar = Instance.new("Frame")
 TitleBar.Name = "TitleBar"
-TitleBar.Parent = MainFrame
-TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-TitleBar.BorderSizePixel = 0
 TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
 
+-- Round TitleBar corners
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 10)
+TitleCorner.Parent = TitleBar
+
+-- Fix rounded corners with a Frame
+local CornerFix = Instance.new("Frame")
+CornerFix.Name = "CornerFix"
+CornerFix.Size = UDim2.new(1, 0, 0.5, 0)
+CornerFix.Position = UDim2.new(0, 0, 0.5, 0)
+CornerFix.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+CornerFix.BorderSizePixel = 0
+CornerFix.Parent = TitleBar
+
+-- Title text
+local TitleText = Instance.new("TextLabel")
 TitleText.Name = "TitleText"
-TitleText.Parent = TitleBar
-TitleText.BackgroundTransparency = 1
-TitleText.Position = UDim2.new(0, 10, 0, 0)
 TitleText.Size = UDim2.new(1, -60, 1, 0)
-TitleText.Font = Enum.Font.SourceSansBold
-TitleText.Text = "Crosshair Changer"
+TitleText.Position = UDim2.new(0, 10, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "Crosshair Texture Changer"
 TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleText.TextSize = 18
+TitleText.TextSize = 16
+TitleText.Font = Enum.Font.SourceSansBold
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Parent = TitleBar
 
+-- Close button
+local CloseButton = Instance.new("TextButton")
 CloseButton.Name = "CloseButton"
-CloseButton.Parent = TitleBar
-CloseButton.BackgroundTransparency = 1
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
 CloseButton.Position = UDim2.new(1, -30, 0, 0)
-CloseButton.Size = UDim2.new(0, 30, 1, 0)
+CloseButton.BackgroundTransparency = 1
+CloseButton.Text = "✖"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.TextSize = 16
 CloseButton.Font = Enum.Font.SourceSansBold
-CloseButton.Text = "X"
-CloseButton.TextColor3 = Color3.fromRGB(255, 80, 80)
-CloseButton.TextSize = 18
+CloseButton.Parent = TitleBar
 
+-- Minimize button
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -60, 0, 0)
+MinimizeButton.BackgroundTransparency = 1
+MinimizeButton.Text = "−"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.TextSize = 20
+MinimizeButton.Font = Enum.Font.SourceSansBold
+MinimizeButton.Parent = TitleBar
+
+-- Content Frame
+local ContentFrame = Instance.new("Frame")
 ContentFrame.Name = "ContentFrame"
-ContentFrame.Parent = MainFrame
+ContentFrame.Size = UDim2.new(1, -20, 1, -40)
+ContentFrame.Position = UDim2.new(0, 10, 0, 35)
 ContentFrame.BackgroundTransparency = 1
-ContentFrame.Position = UDim2.new(0, 0, 0, 30)
-ContentFrame.Size = UDim2.new(1, 0, 1, -30)
+ContentFrame.Parent = MainFrame
 
-CrosshairList.Name = "CrosshairList"
-CrosshairList.Parent = ContentFrame
-CrosshairList.Active = true
-CrosshairList.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-CrosshairList.BorderSizePixel = 0
-CrosshairList.Position = UDim2.new(0, 10, 0, 10)
-CrosshairList.Size = UDim2.new(1, -20, 1, -20)
-CrosshairList.CanvasSize = UDim2.new(0, 0, 0, 0)
-CrosshairList.ScrollBarThickness = 6
+-- Preview Label
+local PreviewLabel = Instance.new("TextLabel")
+PreviewLabel.Name = "PreviewLabel"
+PreviewLabel.Size = UDim2.new(1, 0, 0, 25)
+PreviewLabel.BackgroundTransparency = 1
+PreviewLabel.Text = "Current Crosshair Preview:"
+PreviewLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+PreviewLabel.TextSize = 16
+PreviewLabel.Font = Enum.Font.SourceSansSemibold
+PreviewLabel.Parent = ContentFrame
 
-UIListLayout.Parent = CrosshairList
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 5)
+-- Crosshair Preview
+local PreviewFrame = Instance.new("Frame")
+PreviewFrame.Name = "PreviewFrame"
+PreviewFrame.Size = UDim2.new(1, 0, 0, 100)
+PreviewFrame.Position = UDim2.new(0, 0, 0, 30)
+PreviewFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+PreviewFrame.BorderSizePixel = 0
+PreviewFrame.Parent = ContentFrame
 
--- Create Crosshair Button
-local function CreateCrosshairButton(name, id, index)
-    local container = Instance.new("Frame")
-    container.Name = name .. "Container"
-    container.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    container.BorderSizePixel = 0
-    container.Size = UDim2.new(1, -10, 0, 60)
-    container.LayoutOrder = index
-    container.Parent = CrosshairList
-    
-    local previewFrame = Instance.new("Frame")
-    previewFrame.Name = "Preview"
-    previewFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    previewFrame.BorderSizePixel = 0
-    previewFrame.Position = UDim2.new(0, 5, 0, 5)
-    previewFrame.Size = UDim2.new(0, 50, 0, 50)
-    previewFrame.Parent = container
-    
-    local previewImage = Instance.new("ImageLabel")
-    previewImage.Name = "PreviewImage"
-    previewImage.BackgroundTransparency = 1
-    previewImage.Position = UDim2.new(0, 5, 0, 5)
-    previewImage.Size = UDim2.new(1, -10, 1, -10)
-    previewImage.Image = "rbxassetid://" .. id
-    previewImage.Parent = previewFrame
-    
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "NameLabel"
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Position = UDim2.new(0, 65, 0, 5)
-    nameLabel.Size = UDim2.new(1, -135, 0, 20)
-    nameLabel.Font = Enum.Font.SourceSansBold
-    nameLabel.Text = name
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextSize = 16
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Parent = container
-    
-    local idLabel = Instance.new("TextLabel")
-    idLabel.Name = "IDLabel"
-    idLabel.BackgroundTransparency = 1
-    idLabel.Position = UDim2.new(0, 65, 0, 25)
-    idLabel.Size = UDim2.new(1, -135, 0, 20)
-    idLabel.Font = Enum.Font.SourceSans
-    idLabel.Text = "ID: " .. id
-    idLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    idLabel.TextSize = 14
-    idLabel.TextXAlignment = Enum.TextXAlignment.Left
-    idLabel.Parent = container
-    
-    local selectButton = Instance.new("TextButton")
-    selectButton.Name = "SelectButton"
-    selectButton.BackgroundColor3 = Color3.fromRGB(60, 100, 200)
-    selectButton.BorderSizePixel = 0
-    selectButton.Position = UDim2.new(1, -60, 0.5, -15)
-    selectButton.Size = UDim2.new(0, 50, 0, 30)
-    selectButton.Font = Enum.Font.SourceSansBold
-    selectButton.Text = "Apply"
-    selectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    selectButton.TextSize = 14
-    selectButton.Parent = container
-    
-    selectButton.MouseButton1Click:Connect(function()
-        ApplyCrosshair(id)
-    end)
-    
-    return container
-end
+local UICornerPreview = Instance.new("UICorner")
+UICornerPreview.CornerRadius = UDim.new(0, 6)
+UICornerPreview.Parent = PreviewFrame
 
--- Default Crosshair Button
-DefaultButton.Name = "DefaultButton"
-DefaultButton.Parent = CrosshairList
-DefaultButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-DefaultButton.BorderSizePixel = 0
-DefaultButton.Size = UDim2.new(1, -10, 0, 40)
-DefaultButton.Font = Enum.Font.SourceSansBold
-DefaultButton.Text = "Restore Default Crosshair"
-DefaultButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-DefaultButton.TextSize = 16
-DefaultButton.LayoutOrder = 0
+local CrosshairPreview = Instance.new("ImageLabel")
+CrosshairPreview.Name = "CrosshairPreview"
+CrosshairPreview.Size = UDim2.new(0, 50, 0, 50)
+CrosshairPreview.Position = UDim2.new(0.5, -25, 0.5, -25)
+CrosshairPreview.BackgroundTransparency = 1
+CrosshairPreview.Image = CROSSHAIR_URLS[1]
+CrosshairPreview.Parent = PreviewFrame
 
-DefaultButton.MouseButton1Click:Connect(function()
-    RestoreDefaultCrosshair()
-end)
+-- Options Label
+local OptionsLabel = Instance.new("TextLabel")
+OptionsLabel.Name = "OptionsLabel"
+OptionsLabel.Size = UDim2.new(1, 0, 0, 25)
+OptionsLabel.Position = UDim2.new(0, 0, 0, 140)
+OptionsLabel.BackgroundTransparency = 1
+OptionsLabel.Text = "Available Crosshairs:"
+OptionsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+OptionsLabel.TextSize = 16
+OptionsLabel.Font = Enum.Font.SourceSansSemibold
+OptionsLabel.Parent = ContentFrame
 
--- Functions to handle crosshair swapping
-function CheckForCrosshair()
-    local playerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
-    if not playerGui then
-        warn("PlayerGui not found")
-        return false
-    end
+-- Create buttons for each crosshair
+for i, url in ipairs(CROSSHAIR_URLS) do
+    local CrosshairButton = Instance.new("TextButton")
+    CrosshairButton.Name = "Crosshair" .. i
+    CrosshairButton.Size = UDim2.new(0.48, 0, 0, 60)
+    CrosshairButton.Position = UDim2.new(
+        i % 2 == 1 and 0 or 0.52, 
+        0, 
+        0, 
+        175 + math.floor((i-1)/2) * 70
+    )
+    CrosshairButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    CrosshairButton.BorderSizePixel = 0
+    CrosshairButton.Text = ""
+    CrosshairButton.Parent = ContentFrame
     
-    local crosshairGui = playerGui:FindFirstChild("Crosshair")
-    if not crosshairGui then
-        warn("Crosshair GUI not found")
-        return false
-    end
+    local UICornerButton = Instance.new("UICorner")
+    UICornerButton.CornerRadius = UDim.new(0, 6)
+    UICornerButton.Parent = CrosshairButton
     
-    originalCrosshair = crosshairGui
-    originalCrosshairParent = crosshairGui.Parent
-    return true
-end
-
-function ApplyCrosshair(id)
-    if not CheckForCrosshair() then
-        return
-    end
+    local CrosshairImage = Instance.new("ImageLabel")
+    CrosshairImage.Name = "CrosshairImage"
+    CrosshairImage.Size = UDim2.new(0, 30, 0, 30)
+    CrosshairImage.Position = UDim2.new(0, 10, 0.5, -15)
+    CrosshairImage.BackgroundTransparency = 1
+    CrosshairImage.Image = url
+    CrosshairImage.Parent = CrosshairButton
     
-    -- Remove existing custom crosshair if present
-    if customCrosshair then
-        customCrosshair:Destroy()
-        customCrosshair = nil
-    end
+    local CrosshairText = Instance.new("TextLabel")
+    CrosshairText.Name = "CrosshairText"
+    CrosshairText.Size = UDim2.new(1, -50, 1, 0)
+    CrosshairText.Position = UDim2.new(0, 50, 0, 0)
+    CrosshairText.BackgroundTransparency = 1
+    CrosshairText.Text = CROSSHAIR_NAMES[i]
+    CrosshairText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CrosshairText.TextSize = 14
+    CrosshairText.Font = Enum.Font.SourceSans
+    CrosshairText.TextXAlignment = Enum.TextXAlignment.Left
+    CrosshairText.Parent = CrosshairButton
     
-    -- Hide original crosshair
-    if originalCrosshair then
-        originalCrosshair.Enabled = false
-    end
-    
-    -- Create new crosshair
-    customCrosshair = Instance.new("ScreenGui")
-    customCrosshair.Name = "CustomCrosshair"
-    customCrosshair.ResetOnSpawn = false
-    customCrosshair.Parent = game:GetService("CoreGui")
-    
-    local crosshairImage = Instance.new("ImageLabel")
-    crosshairImage.Name = "CrosshairImage"
-    crosshairImage.BackgroundTransparency = 1
-    crosshairImage.Position = UDim2.new(0.5, -25, 0.5, -25)
-    crosshairImage.Size = UDim2.new(0, 50, 0, 50)
-    crosshairImage.Image = "rbxassetid://" .. id
-    crosshairImage.Parent = customCrosshair
-    
-    currentCrosshair = id
-    
-    -- Feedback notification
-    ShowNotification("Crosshair applied: " .. id)
-end
-
-function RestoreDefaultCrosshair()
-    if originalCrosshair then
-        originalCrosshair.Enabled = true
-    end
-    
-    if customCrosshair then
-        customCrosshair:Destroy()
-        customCrosshair = nil
-    end
-    
-    currentCrosshair = nil
-    
-    ShowNotification("Default crosshair restored")
-end
-
-function ShowNotification(text)
-    local notification = Instance.new("Frame")
-    notification.Name = "Notification"
-    notification.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    notification.BorderSizePixel = 0
-    notification.Position = UDim2.new(0.5, -100, 0.8, 0)
-    notification.Size = UDim2.new(0, 200, 0, 40)
-    notification.Parent = ScreenGui
-    
-    local notificationText = Instance.new("TextLabel")
-    notificationText.Name = "NotificationText"
-    notificationText.BackgroundTransparency = 1
-    notificationText.Position = UDim2.new(0, 5, 0, 0)
-    notificationText.Size = UDim2.new(1, -10, 1, 0)
-    notificationText.Font = Enum.Font.SourceSans
-    notificationText.Text = text
-    notificationText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    notificationText.TextSize = 16
-    notificationText.Parent = notification
-    
-    -- Fade out after 2 seconds
-    spawn(function()
-        wait(2)
-        for i = 1, 10 do
-            notification.BackgroundTransparency = i / 10
-            notificationText.TextTransparency = i / 10
-            wait(0.05)
+    -- Button click handler
+    CrosshairButton.MouseButton1Click:Connect(function()
+        CrosshairPreview.Image = url
+        
+        -- Find and update the actual crosshair in the game
+        local gameUI = game:GetService("Players").LocalPlayer.PlayerGui
+        local crosshairUI = gameUI:FindFirstChild("Crosshair")
+        
+        if crosshairUI and crosshairUI:FindFirstChild("Crosshair") then
+            local crosshairImage = crosshairUI.Crosshair
+            if crosshairImage:IsA("ImageLabel") then
+                crosshairImage.Image = url
+            end
+        else
+            print("Crosshair UI not found. Path may have changed.")
         end
-        notification:Destroy()
     end)
 end
 
--- Dragging Functionality
+-- Status text
+local StatusText = Instance.new("TextLabel")
+StatusText.Name = "StatusText"
+StatusText.Size = UDim2.new(1, 0, 0, 20)
+StatusText.Position = UDim2.new(0, 0, 1, -20)
+StatusText.BackgroundTransparency = 1
+StatusText.Text = "Ready to use"
+StatusText.TextColor3 = Color3.fromRGB(100, 255, 100)
+StatusText.TextSize = 12
+StatusText.Font = Enum.Font.SourceSans
+StatusText.Parent = ContentFrame
+
+-- Make UI draggable
+local dragging
+local dragInput
+local dragStart
+local startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
 TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        isDragging = true
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
         dragStart = input.Position
         startPos = MainFrame.Position
-    end
-end)
-
-TitleBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        isDragging = false
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 
 TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement and isDragging then
-        local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
     end
 end)
 
--- Close Button
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- Close and minimize functionality
+local minimized = false
+local originalSize = MainFrame.Size
+
 CloseButton.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
+    TextureChangerUI:Destroy()
 end)
 
--- Initialize crosshair buttons
-for i, crosshair in ipairs(crosshairs) do
-    CreateCrosshairButton(crosshair.name, crosshair.id, i)
-end
-
--- Update canvas size
-CrosshairList.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 10)
-
--- Check if we're in the right game
-local function CheckGame()
-    if game.PlaceId ~= 326546526 then  -- Assuming this is Dead Rails PlaceId
-        ShowNotification("Warning: This script is designed for Dead Rails only.")
+MinimizeButton.MouseButton1Click:Connect(function()
+    if minimized then
+        -- Restore
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(MainFrame, tweenInfo, {Size = originalSize})
+        tween:Play()
+        
+        ContentFrame.Visible = true
+        MinimizeButton.Text = "−"
+    else
+        -- Minimize
+        originalSize = MainFrame.Size
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, 300, 0, 30)})
+        tween:Play()
+        
+        ContentFrame.Visible = false
+        MinimizeButton.Text = "+"
     end
-end
-
--- Check if crosshair exists when player loads
-LocalPlayer.CharacterAdded:Connect(function()
-    wait(1)
-    CheckForCrosshair()
     
-    -- Reapply current crosshair if one was selected
-    if currentCrosshair then
-        ApplyCrosshair(currentCrosshair)
-    end
+    minimized = not minimized
 end)
 
--- Initial setup
-CheckGame()
-if LocalPlayer.Character then
-    CheckForCrosshair()
-end
-
--- Clean up when script is terminated
-local function cleanup()
-    RestoreDefaultCrosshair()
-    if ScreenGui then
-        ScreenGui:Destroy()
+-- Try to find and check the crosshair on load
+task.spawn(function()
+    wait(1) -- Wait for UI to load
+    local gameUI = game:GetService("Players").LocalPlayer.PlayerGui
+    local crosshairUI = gameUI:WaitForChild("Crosshair", 5)
+    
+    if crosshairUI and crosshairUI:FindFirstChild("Crosshair") then
+        StatusText.Text = "Crosshair found successfully"
+        StatusText.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        StatusText.Text = "Crosshair not found. Path may have changed."
+        StatusText.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
-end
-
-return cleanup
+end)
